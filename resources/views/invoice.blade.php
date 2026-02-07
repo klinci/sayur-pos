@@ -1,122 +1,204 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Invoice POS Bitmap</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Input Invoice - BaReng7 Vegie</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-        body {
-            font-family: monospace;
-            display: flex;
-            gap: 30px;
-            padding: 20px;
-        }
-        .form, .preview {
-            width: 320px;
-        }
-        .item {
-            display: grid;
-            grid-template-columns: 1fr 60px 80px 30px;
-            gap: 4px;
-            margin-bottom: 6px;
-        }
-        canvas {
-            border: 1px dashed #333;
-            background: #fff;
+        .total-display {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #198754;
         }
     </style>
 </head>
-<body>
+<body class="bg-light">
+    <div class="container py-5">
+        <div class="card shadow-sm">
+            <div class="card-header bg-success text-white">
+                <h4 class="mb-0">Form Invoice BaReng7 Vegie</h4>
+            </div>
+            <div class="card-body">
+                <form id="invoiceForm">
+                    @csrf
+                    <div class="mb-3">
+                        <label class="form-label">Nama Customer</label>
+                        <input type="text" name="customer_name" class="form-control" placeholder="Masukkan nama..." required>
+                    </div>
 
-<div class="form">
-    <form method="POST" action="/invoice/print">
-        @csrf
-        <h3>Input Item</h3>
-        <div id="items"></div>
-        <button type="button" onclick="addItem()">+ Item</button>
-        <br><br>
-        <button type="submit">PRINT</button>
-    </form>
-</div>
+                    <hr>
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h5 class="mb-0">Daftar Item</h5>
+                        <button type="button" class="btn btn-outline-primary btn-sm" id="addItem">
+                            + Tambah Item
+                        </button>
+                    </div>
 
-<div class="preview">
-    <h3>Preview 58mm</h3>
-    <canvas id="canvas" width="384"></canvas>
-</div>
+                    <div id="itemContainer">
+                        <div class="row g-2 mb-2 item-row">
+                            <div class="col-md-5">
+                                <input type="text" name="items[0][name]" class="form-control" placeholder="Nama Item" required>
+                            </div>
+                            <div class="col-md-2">
+                                <input type="number" name="items[0][qty]" class="form-control input-qty" placeholder="Qty" min="1" value="1" required>
+                            </div>
+                            <div class="col-md-3">
+                                <input type="number" name="items[0][price]" class="form-control input-price" placeholder="Harga" required>
+                            </div>
+                            <div class="col-md-2">
+                                <button type="button" class="btn btn-danger w-100 btn-remove" disabled>×</button>
+                            </div>
+                        </div>
+                    </div>
 
-<script>
-let index = 0;
-const logo = new Image();
-logo.src = "/logo-bw-300.png";
+                    <div class="mt-4 p-3 bg-light border rounded d-flex justify-content-between align-items-center">
+                        <span class="h5 mb-0">Estimasi Total:</span>
+                        <span class="total-display" id="grandTotalDisplay">Rp 0</span>
+                    </div>
 
-function addItem() {
-    const div = document.createElement('div');
-    div.className = 'item';
-    div.innerHTML = `
-        <input name="items[${index}][name]" placeholder="Item" oninput="render()">
-        <input name="items[${index}][qty]" type="number" placeholder="Qty" oninput="render()">
-        <input name="items[${index}][price]" type="number" placeholder="Harga" oninput="render()">
-        <button type="button" onclick="this.parentElement.remove(); render()">−</button>
-    `;
-    document.getElementById('items').appendChild(div);
-    index++;
-    render();
-}
+                    <div class="mt-4 d-flex gap-2">
+                        <button type="button" class="btn btn-outline-secondary btn-lg w-50" id="btnClear">
+                            HAPUS SEMUA
+                        </button>
+                        <button type="submit" class="btn btn-success btn-lg w-50" id="btnPrint">
+                            CETAK INVOICE
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
 
-function render() {
-    const canvas = document.getElementById('canvas');
-    const ctx = canvas.getContext('2d');
+    <script>
+        let itemCount = 1;
 
-    canvas.height = 500 + document.querySelectorAll('.item').length * 50;
-    ctx.fillStyle = '#fff';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.fillStyle = '#000';
+        // Fungsi Format Rupiah untuk Tampilan
+        function formatRupiah(angka) {
+            return "Rp " + new Intl.NumberFormat('id-ID').format(angka);
+        }
 
-    let y = 10;
+        // Fungsi Hitung Total
+        function calculateTotal() {
+            let total = 0;
+            const rows = document.querySelectorAll('.item-row');
+            
+            rows.forEach(row => {
+                const qty = row.querySelector('.input-qty').value || 0;
+                const price = row.querySelector('.input-price').value || 0;
+                total += (parseInt(qty) * parseInt(price));
+            });
 
-    /* LOGO */
-    if (logo.complete) {
-        const w = 280;
-        const h = logo.height * (w / logo.width);
-        ctx.drawImage(logo, (canvas.width - w) / 2, y, w, h);
-        y += h + 10;
-    }
+            document.getElementById('grandTotalDisplay').innerText = formatRupiah(total);
+        }
 
-    ctx.font = 'bold 16px monospace';
-    ctx.fillText('TOKO CONTOH', 110, y); y += 22;
-    ctx.font = '12px monospace';
-    ctx.fillText('Jl. Testing No. 123', 90, y); y += 18;
-    ctx.fillText('------------------------------', 10, y); y += 18;
+        // Listener untuk input (Qty & Harga)
+        document.getElementById('itemContainer').addEventListener('input', (e) => {
+            if (e.target.classList.contains('input-qty') || e.target.classList.contains('input-price')) {
+                calculateTotal();
+            }
+        });
 
-    let total = 0;
+        // Tambah Item
+        document.getElementById('addItem').addEventListener('click', () => {
+            const container = document.getElementById('itemContainer');
+            const row = document.createElement('div');
+            row.className = 'row g-2 mb-2 item-row';
+            row.innerHTML = `
+                <div class="col-md-5">
+                    <input type="text" name="items[${itemCount}][name]" class="form-control" placeholder="Nama Item" required>
+                </div>
+                <div class="col-md-2">
+                    <input type="number" name="items[${itemCount}][qty]" class="form-control input-qty" placeholder="Qty" min="1" value="1" required>
+                </div>
+                <div class="col-md-3">
+                    <input type="number" name="items[${itemCount}][price]" class="form-control input-price" placeholder="Harga" required>
+                </div>
+                <div class="col-md-2">
+                    <button type="button" class="btn btn-danger w-100 btn-remove">×</button>
+                </div>
+            `;
+            container.appendChild(row);
+            itemCount++;
+            updateRemoveButtons();
+            calculateTotal(); // Re-calculate
+        });
 
-    document.querySelectorAll('.item').forEach(row => {
-        const i = row.querySelectorAll('input');
-        const name = i[0].value || '';
-        const qty = parseInt(i[1].value || 0);
-        const price = parseInt(i[2].value || 0);
-        if (!name || qty <= 0 || price <= 0) return;
+        // Hapus Item
+        document.getElementById('itemContainer').addEventListener('click', (e) => {
+            if (e.target.classList.contains('btn-remove')) {
+                e.target.closest('.item-row').remove();
+                updateRemoveButtons();
+                calculateTotal(); // Re-calculate
+            }
+        });
 
-        const subtotal = qty * price;
-        total += subtotal;
+        function updateRemoveButtons() {
+            const rows = document.querySelectorAll('.item-row');
+            rows.forEach(row => {
+                row.querySelector('.btn-remove').disabled = (rows.length === 1);
+            });
+        }
 
-        ctx.fillText(
-            name.substring(0,16).padEnd(16) +
-            qty.toString().padStart(3) +
-            ' x ' +
-            price.toString().padStart(7),
-            10, y
-        );
-        y += 18;
-        ctx.fillText('   Subtotal: ' + subtotal, 10, y);
-        y += 22;
-    });
+        // Fungsi Reset Form
+        document.getElementById('btnClear').addEventListener('click', () => {
+            if (confirm('Apakah Anda yakin ingin menghapus semua data inputan?')) {
+                // 1. Reset Nama Customer
+                document.querySelector('input[name="customer_name"]').value = '';
 
-    ctx.fillText('------------------------------', 10, y); y += 18;
-    ctx.font = 'bold 14px monospace';
-    ctx.fillText('TOTAL : ' + total, 10, y);
-}
+                // 2. Hapus semua baris item kecuali baris pertama
+                const rows = document.querySelectorAll('.item-row');
+                rows.forEach((row, index) => {
+                    if (index === 0) {
+                        // Reset baris pertama ke awal
+                        row.querySelector('input[name="items[0][name]"]').value = '';
+                        row.querySelector('input[name="items[0][qty]"]').value = 1;
+                        row.querySelector('input[name="items[0][price]"]').value = '';
+                    } else {
+                        // Hapus baris lainnya
+                        row.remove();
+                    }
+                });
 
-addItem();
-</script>
+                // 3. Reset counter item ke 1
+                itemCount = 1;
 
+                // 4. Update tombol hapus dan total
+                updateRemoveButtons();
+                calculateTotal();
+            }
+        });
+
+        // Handle Submit (AJAX)
+        document.getElementById('invoiceForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btn = document.getElementById('btnPrint');
+            btn.disabled = true;
+            btn.innerText = 'Mencetak...';
+
+            const formData = new FormData(e.target);
+            
+            try {
+                const response = await fetch("{{ route('invoice.print') }}", {
+                    method: 'POST',
+                    body: formData,
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                });
+                
+                const result = await response.json();
+                if(result.status === 'printed') {
+                    alert('Invoice berhasil dicetak!');
+                    // Opsional: Reset form setelah cetak
+                    // e.target.reset();
+                    // calculateTotal();
+                }
+            } catch (error) {
+                alert('Gagal mencetak: ' + error);
+            } finally {
+                btn.disabled = false;
+                btn.innerText = 'CETAK INVOICE';
+            }
+        });
+    </script>
 </body>
 </html>

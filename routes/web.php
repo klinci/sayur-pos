@@ -8,6 +8,6 @@ Route::get('/', function () {
 });
 
 Route::get('/invoice', [InvoiceController::class, 'index']);
-Route::post('/invoice/print', [InvoiceController::class, 'print']);
+Route::post('/invoice/print', [InvoiceController::class, 'print'])->name('invoice.print');
 Route::get('/upload-nv-logo', [InvoiceController::class, 'uploadNvLogo']);
 
