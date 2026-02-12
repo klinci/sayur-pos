@@ -16,8 +16,17 @@
 <body class="bg-light">
     <div class="container py-5">
         <div class="card shadow-sm">
-            <div class="card-header bg-success text-white">
-                <h4 class="mb-0">Form Invoice BaReng7 Vegie</h4>
+            <div class="card-header bg-success text-white d-flex justify-content-between align-items-center p-3">
+                <h4 class="mb-0 fw-bold">BaReng7 Vegie</h4>
+                
+                <div class="d-flex gap-2">
+                    <a href="{{ route('product.master') }}" class="btn btn-light btn-sm fw-bold">
+                        <i class="bi bi-box"></i> Master Data
+                    </a>
+                    <a href="{{ route('history') }}" class="btn btn-info btn-sm text-white fw-bold">
+                        <i class="bi bi-clock-history"></i> History
+                    </a>
+                </div>
             </div>
             <div class="card-body">
                 <form id="invoiceForm">
@@ -38,7 +47,15 @@
                     <div id="itemContainer">
                         <div class="row g-2 mb-2 item-row">
                             <div class="col-md-5">
-                                <input type="text" name="items[0][name]" class="form-control" placeholder="Nama Item" required>
+                                <select name="items[0][name]" class="form-select select-product" required>
+                                    <option value="" data-price="0">-- Pilih Produk --</option>
+                                    @foreach($masterData as $product)
+                                        <option value="{{ $product['name'] }}" data-price="{{ $product['price'] }}">
+                                            {{ $product['name'] }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                                <input type="hidden" name="total_hidden" id="total_hidden">
                             </div>
                             <div class="col-md-2">
                                 <input type="number" name="items[0][qty]" class="form-control input-qty" placeholder="Qty" min="1" value="1" required>
@@ -67,7 +84,28 @@
                     </div>
                 </form>
             </div>
-        </div>
+        </div>        
+        <!--
+                <b>Harga Jual:</b>
+                <br/>
+                - Kangkung 500 gram = 15000
+                <br/>
+                - Packoy 500 gram = 15000
+                <br/>
+                - Siomak 250 gram = 10000
+                <br/>
+                - Lolorosa 250 gram = 10000
+                <br/>
+                - Selada keriting 500 gram = 15000
+                <br/>
+                - Pagoda 250 gram = 10000
+                <br/>
+                - Naibai 250 gram = 12500
+                <br/>
+                - Bayam 250 gram = 10000
+                <br/>
+                - Tomat ceri 250 gram = 10000
+        -->
     </div>
 
     <script>
@@ -105,19 +143,26 @@
             const row = document.createElement('div');
             row.className = 'row g-2 mb-2 item-row';
             row.innerHTML = `
-                <div class="col-md-5">
-                    <input type="text" name="items[${itemCount}][name]" class="form-control" placeholder="Nama Item" required>
-                </div>
-                <div class="col-md-2">
-                    <input type="number" name="items[${itemCount}][qty]" class="form-control input-qty" placeholder="Qty" min="1" value="1" required>
-                </div>
-                <div class="col-md-3">
-                    <input type="number" name="items[${itemCount}][price]" class="form-control input-price" placeholder="Harga" required>
-                </div>
-                <div class="col-md-2">
-                    <button type="button" class="btn btn-danger w-100 btn-remove">×</button>
-                </div>
-            `;
+                            <div class="col-md-5">
+                                <select name="items[${itemCount}][name]" class="form-select select-product" required>
+                                    <option value="" data-price="0">-- Pilih Produk --</option>
+                                    @foreach($masterData as $product)
+                                        <option value="{{ $product['name'] }}" data-price="{{ $product['price'] }}">
+                                            {{ $product['name'] }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <input type="number" name="items[${itemCount}][qty]" class="form-control input-qty" min="1" value="1" required>
+                            </div>
+                            <div class="col-md-3">
+                                <input type="number" name="items[${itemCount}][price]" class="form-control input-price" required>
+                            </div>
+                            <div class="col-md-2">
+                                <button type="button" class="btn btn-danger w-100 btn-remove">×</button>
+                            </div>
+                        `;
             container.appendChild(row);
             itemCount++;
             updateRemoveButtons();
@@ -146,25 +191,39 @@
                 // 1. Reset Nama Customer
                 document.querySelector('input[name="customer_name"]').value = '';
 
-                // 2. Hapus semua baris item kecuali baris pertama
-                const rows = document.querySelectorAll('.item-row');
+                // 2. Ambil container dan semua baris
+                const container = document.getElementById('itemContainer');
+                const rows = container.querySelectorAll('.item-row');
+
+                // 3. Reset baris pertama, hapus sisanya
                 rows.forEach((row, index) => {
                     if (index === 0) {
-                        // Reset baris pertama ke awal
-                        row.querySelector('input[name="items[0][name]"]').value = '';
-                        row.querySelector('input[name="items[0][qty]"]').value = 1;
-                        row.querySelector('input[name="items[0][price]"]').value = '';
+                        // Reset Dropdown ke pilihan pertama (pilih produk)
+                        const select = row.querySelector('.select-product');
+                        select.selectedIndex = 0;
+                        
+                        // Kosongkan input Qty (kembali ke 1) dan Harga
+                        row.querySelector('.input-qty').value = 1;
+                        row.querySelector('.input-price').value = '';
                     } else {
-                        // Hapus baris lainnya
+                        // Hapus baris tambahan
                         row.remove();
                     }
                 });
 
-                // 3. Reset counter item ke 1
+                // 4. Reset hitungan ID item kembali ke 1
                 itemCount = 1;
 
-                // 4. Update tombol hapus dan total
+                // 5. Update tampilan tombol hapus (agar baris pertama disable tombol x-nya)
                 updateRemoveButtons();
+
+                // 6. Reset Total secara visual dan hidden input
+                document.getElementById('grandTotalDisplay').innerText = "Rp 0";
+                if(document.getElementById('total_hidden')) {
+                    document.getElementById('total_hidden').value = 0;
+                }
+                
+                // Opsional: jalankan hitung ulang untuk memastikan
                 calculateTotal();
             }
         });
@@ -197,6 +256,22 @@
             } finally {
                 btn.disabled = false;
                 btn.innerText = 'CETAK INVOICE';
+            }
+        });
+
+        document.getElementById('itemContainer').addEventListener('change', (e) => {
+            if (e.target.classList.contains('select-product')) {
+                // Ambil baris terdekat
+                const row = e.target.closest('.item-row');
+                // Ambil harga dari atribut data-price di option yang dipilih
+                const selectedOption = e.target.options[e.target.selectedIndex];
+                const price = selectedOption.getAttribute('data-price');
+                
+                // Isi input harga
+                row.querySelector('.input-price').value = price;
+                
+                // Hitung ulang total
+                calculateTotal();
             }
         });
     </script>
