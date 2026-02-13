@@ -74,6 +74,22 @@
                         <span class="total-display" id="grandTotalDisplay">Rp 0</span>
                     </div>
 
+                    <div class="mb-3 p-3 border rounded bg-white">
+                        <label class="form-label d-block fw-bold">Pilih Metode Cetak:</label>
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input" type="radio" name="print_option" value="struk" checked>
+                            <label class="form-check-label">Hanya Struk (Printer)</label>
+                        </div>
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input" type="radio" name="print_option" value="pdf">
+                            <label class="form-check-label">Hanya PDF (Digital)</label>
+                        </div>
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input" type="radio" name="print_option" value="keduanya">
+                            <label class="form-check-label">Keduanya</label>
+                        </div>
+                    </div>
+
                     <div class="mt-4 d-flex gap-2">
                         <button type="button" class="btn btn-outline-secondary btn-lg w-50" id="btnClear">
                             HAPUS SEMUA
@@ -245,14 +261,18 @@
                 });
                 
                 const result = await response.json();
-                if(result.status === 'printed') {
-                    alert('Invoice berhasil dicetak!');
+                if(result.status === 'success' || result.status === 'printed') {
+                    if(result.pdf_url) {
+                        window.open(result.pdf_url, '_blank');
+                    }
+
+                    alert('Invoice berhasil diproses!');
                     // Opsional: Reset form setelah cetak
                     // e.target.reset();
                     // calculateTotal();
                 }
             } catch (error) {
-                alert('Gagal mencetak: ' + error);
+                aalert('Gagal memproses transaksi: ' + error);
             } finally {
                 btn.disabled = false;
                 btn.innerText = 'CETAK INVOICE';

@@ -78,6 +78,10 @@
                                 </td>
                                 <td class="text-center">
                                     <div class="d-flex justify-content-center gap-1">
+
+                                        <a href="{{ route('history.pdf', $t->id) }}" class="btn btn-sm btn-danger" title="Download PDF">
+                                            <i class="bi bi-file-earmark-pdf"></i>
+                                        </a>
                                         
                                         <a href="{{ route('history.reprint', $t->id) }}" class="btn btn-sm btn-info text-white" title="Cetak Ulang">
                                             <i class="bi bi-printer"></i>

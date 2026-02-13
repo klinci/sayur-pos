@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Product;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Mike42\Escpos\Printer;
@@ -81,218 +82,141 @@ class InvoiceController extends Controller
         }
     }
 
+    // --- FUNGSI GENERATE PDF ---
+    public function generatePDF($id)
+    {
+        $trx = DB::table('transactions')->where('id', $id)->first();
+        $items = DB::table('transaction_items')->where('transaction_id', $id)->get();
+
+        if (!$trx) return back();
+
+        $pdf = Pdf::loadView('pdf_invoice', compact('trx', 'items'));
+        return $pdf->download('Invoice-' . str_replace("/", "-", $trx->invoice_no) . '.pdf');
+    }
+
     public function print(Request $request)
     {
-        // Ambil waktu saat ini dengan zona waktu Indonesia (WIB)
         $now = \Carbon\Carbon::now()->timezone('Asia/Jakarta');
-        $tanggalJam = $now->translatedFormat('d-m-Y H:i:s'); // Format: 12-02-2026 16:00:00
-
-        // --- GENERATE NO INVOICE UNIK ---
-        // Format: BRG (BaReng7) + Tanggal + JamMenitDetik
         $noInvoice = "BRG/" . $now->format('Ymd') . "/" . $now->format('His');
-
-        // 1. Ambil data dari request
         $customerName = $request->input('customer_name', 'Pelanggan');        
-
-        $itemsInput = $request->input('items', []); // Ambil array items
+        $itemsInput = $request->input('items', []); 
         
-        // Hitung total secara otomatis
-        $total = 0;
-        foreach ($itemsInput as $item) {
-            $total += ($item['qty'] * $item['price']);
-        }
-
-        // Simpan ke DB dulu
-        DB::transaction(function () use ($noInvoice, $customerName, $itemsInput) {
+        // 1. Simpan ke DB dan Ambil ID-nya keluar
+        $transactionId = DB::transaction(function () use ($noInvoice, $customerName, $itemsInput) {
             $totalSales = 0;
-            $transactionId = DB::table('transactions')->insertGetId([
+            $id = DB::table('transactions')->insertGetId([
                 'invoice_no' => $noInvoice,
                 'customer_name' => $customerName,
+                'total_cost' => 0,
+                'total_sales' => 0,
+                'profit' => 0,
                 'created_at' => now(), 'updated_at' => now(),
             ]);
 
             foreach ($itemsInput as $item) {
                 $totalSales += ($item['qty'] * $item['price']);
                 DB::table('transaction_items')->insert([
-                    'transaction_id' => $transactionId,
+                    'transaction_id' => $id,
                     'product_name' => $item['name'],
                     'qty' => $item['qty'],
                     'price_sell' => $item['price'],
-                    'price_buy' => 0, // Belum diisi
+                    'price_buy' => 0,
                 ]);
             }
-            DB::table('transactions')->where('id', $transactionId)->update([
-                'total_sales' => $totalSales, 'profit' => $totalSales
+
+            DB::table('transactions')->where('id', $id)->update([
+                'total_sales' => $totalSales, 
+                'profit' => $totalSales
             ]);
+
+            return $id; // Mengembalikan ID agar bisa dipakai di bawah
         });
+
+        // 2. Cek Opsi Print
+        $opsi = $request->input('print_option'); 
+        $response = ['status' => 'success'];
+
+        // Jika pilih Struk atau Keduanya, jalankan perintah printer thermal
+        if ($opsi == 'struk' || $opsi == 'keduanya') {
+            try {
+                // Panggil reprint tapi lewat internal logic agar tidak redirect
+                $this->executeThermalPrint($transactionId);
+            } catch (\Exception $e) {
+                $response['print_error'] = $e->getMessage();
+            }
+        }
+
+        // Jika pilih PDF atau Keduanya, berikan URL PDF ke JavaScript
+        if ($opsi == 'pdf' || $opsi == 'keduanya') {
+            $response['pdf_url'] = route('history.pdf', $transactionId);
+        }
+
+        // 3. RETURN JSON (Ini tempatnya)
+        return response()->json($response);
+    }
+
+    public function reprint($id)
+    {
+        try {
+            // Cukup panggil fungsi logic yang sudah kita buat tadi
+            $this->executeThermalPrint($id, true);
+
+            return back()->with('success', 'Struk berhasil dicetak ulang!');
+        } catch (\Exception $e) {
+            // Jika printer error (mati/kabel lepas), tetap ada notifikasi gagal
+            return back()->with('error', 'Gagal print: ' . $e->getMessage());
+        }
+    }
+
+    private function executeThermalPrint($id, $isReprint = false) {
+        $trx = DB::table('transactions')->where('id', $id)->first();
+        $items = DB::table('transaction_items')->where('transaction_id', $id)->get();
+        
+        $now = \Carbon\Carbon::parse($trx->created_at)->timezone('Asia/Jakarta');
+        $tanggalJam = $now->translatedFormat('d-m-Y H:i:s');
 
         $connector = new WindowsPrintConnector("POS-58");
         $printer   = new Printer($connector);
 
         $printer->initialize();
-        $printer->setLineSpacing(33); // 🔧 sedikit lebih longgar
+        $printer->setLineSpacing(33);
         $printer->setJustification(Printer::JUSTIFY_CENTER);
-
-       
-        // 🖼️ PRINT NV LOGO (TOP)
-        // =========================
-        $printer->setJustification(Printer::JUSTIFY_CENTER);
-        $connector->write("\x1C\x70\x01\x00"); 
+        $connector->write("\x1C\x70\x01\x00"); // Logo
         $printer->feed(1);
 
-        // ===== HEADER =====
-
-        $printer->selectPrintMode(
-            Printer::MODE_DOUBLE_WIDTH | Printer::MODE_DOUBLE_HEIGHT
-        );
+        $printer->selectPrintMode(Printer::MODE_DOUBLE_WIDTH | Printer::MODE_DOUBLE_HEIGHT);
         $printer->text("BaReng7 Vegie\n\n");
         $printer->selectPrintMode();
         $printer->text("WA: 895-3338-08937\n");
+        $printer->feed(1);
 
-        // --- CETAK NO INVOICE & TANGGAL ---
         $printer->setJustification(Printer::JUSTIFY_LEFT);
-        $printer->text("No  : " . $noInvoice . "\n");
+        $tanda = $isReprint ? " (RP)" : "";
+        $printer->text("No  : " . $trx->invoice_no . $tanda . "\n");
         $printer->text("Tgl : " . $tanggalJam . "\n");
-
-        // --- TAMBAHAN NAMA CUSTOMER ---
-        $printer->text("Customer: " . strtoupper($customerName) . "\n");
-        // ------------------------------
-
+        $printer->text("Customer: " . strtoupper($trx->customer_name) . "\n");
         $printer->text(str_repeat('=', 32) . "\n");
 
-        // ===== ITEMS =====
-        $printer->setJustification(Printer::JUSTIFY_LEFT);
-
-        foreach ($itemsInput as $item) {
-            // Nama item (item['name'])
-            $printer->text($this->wrapText($item['name'], 32) . "\n");
-            $printer->setLineSpacing(33);
-
-            // Detail: Qty x Harga = Subtotal
-
-            $subtotal = number_format($item['qty'] * $item['price'], 0, ',', '.');
-            $hargaSatuan = number_format($item['price'], 0, ',', '.');
-
-            $printer->text(sprintf(
-                " %2dx %-8s %11s\n",
-                $item['qty'],
-                $hargaSatuan,
-                $subtotal
-            ));
-
+        foreach ($items as $item) {
+            $printer->text($this->wrapText($item->product_name, 32) . "\n");
+            $subtotal = number_format($item->qty * $item->price_sell, 0, ',', '.');
+            $hargaSatuan = number_format($item->price_sell, 0, ',', '.');
+            $printer->text(sprintf(" %2dx %-8s %11s\n", $item->qty, $hargaSatuan, $subtotal));
             $printer->feed(1);
         }
 
         $printer->text(str_repeat('-', 32) . "\n");
-
-        // ===== TOTAL =====
         $printer->setEmphasis(true);
-        $printer->text(sprintf(
-            "TOTAL %26s\n",
-            $this->formatRupiah($total)
-        ));
+        $printer->text(sprintf("TOTAL %26s\n", $this->formatRupiah($trx->total_sales)));
         $printer->setEmphasis(false);
-
-        // ===== FOOTER =====
+        $printer->text(str_repeat('-', 32) . "\n");
+        
         $printer->feed(1);
         $printer->setJustification(Printer::JUSTIFY_CENTER);
-        $printer->feed(1);
-        $printer->text("Pembayaran dapat ditransfer\n ke rekening:\n\nBCA: 1560815600 a.n Merla Rosita\n\nThank you for your order\n");
-
+        $printer->text("Pembayaran dapat ditransfer\nke rekening:\n\nBCA: 1560815600 a.n Merla Rosita\n\nThank you for your order\n");
         $printer->feed(4);
         $printer->cut();
         $printer->close();
-
-        return response()->json(['status' => 'printed']);
-    }
-
-    public function reprint($id)
-    {
-        // 1. Ambil data transaksi dan itemnya
-        $trx = DB::table('transactions')->where('id', $id)->first();
-        $items = DB::table('transaction_items')->where('transaction_id', $id)->get();
-
-        if (!$trx) {
-            return back()->with('error', 'Transaksi tidak ditemukan');
-        }
-
-        $customerName = $trx->customer_name; 
-
-        $tanggalFormatted = \Carbon\Carbon::parse($trx->created_at)
-                        ->timezone('Asia/Jakarta')
-                        ->translatedFormat('d-m-Y H:i:s');
-
-        try {
-            $connector = new WindowsPrintConnector("POS-58");
-            $printer = new Printer($connector);
-            
-            $printer->initialize();            
-            $printer->setLineSpacing(33); // 🔧 sedikit lebih longgar
-            $printer->setJustification(Printer::JUSTIFY_CENTER);
-            
-            // Logo (NV RAM)
-            $printer->setJustification(Printer::JUSTIFY_CENTER);
-            $connector->write("\x1C\x70\x01\x00"); 
-            $printer->feed(1);
-
-            /* ===== HEADER ===== */
-            $printer->selectPrintMode(
-            Printer::MODE_DOUBLE_WIDTH | Printer::MODE_DOUBLE_HEIGHT
-            );
-            $printer->text("BaReng7 Vegie\n\n");
-            $printer->selectPrintMode();
-            $printer->text("WA: 895-3338-08937\n");
-
-            $printer->setJustification(Printer::JUSTIFY_LEFT);
-            $printer->text("No  : " . $trx->invoice_no . " (RP)\n");
-            $printer->text("Tgl : " . $tanggalFormatted . "\n");
-            $printer->text("Customer: " . strtoupper($customerName) . "\n");
-            $printer->text(str_repeat('=', 32) . "\n");
-
-            /* ===== ITEMS ===== */
-            $printer->setJustification(Printer::JUSTIFY_LEFT);
-
-            foreach ($items as $item) {
-                $printer->text($this->wrapText($item->product_name, 32) . "\n");
-                
-                $printer->setLineSpacing(33);
-
-                $subtotal = number_format($item->qty * $item->price_sell, 0, ',', '.');
-                $hargaSatuan = number_format($item->price_sell, 0, ',', '.');
-
-                $printer->text(sprintf(
-                    " %2dx %-8s %11s\n",
-                    $item->qty,
-                    $hargaSatuan,
-                    $subtotal
-                ));
-
-                $printer->feed(1);
-            }
-
-            $printer->text(str_repeat('-', 32) . "\n");
-
-            /* ===== TOTAL ===== */
-            $printer->setEmphasis(true);
-            $printer->text(sprintf(
-                "TOTAL %26s\n",
-                $this->formatRupiah($trx->total_sales)
-            ));
-            $printer->setEmphasis(false);
-
-            /* ===== FOOTER ===== */
-            $printer->feed(1);
-            $printer->setJustification(Printer::JUSTIFY_CENTER);
-            $printer->feed(1);
-            $printer->text("Pembayaran dapat ditransfer\n ke rekening:\n\nBCA: 1560815600 a.n Merla Rosita\n\nThank you for your order\n");
-            $printer->feed(4);
-            $printer->cut();
-            $printer->close();
-
-            return back()->with('success', 'Struk berhasil dicetak ulang!');
-        } catch (\Exception $e) {
-            return back()->with('error', 'Gagal print: ' . $e->getMessage());
-        }
     }
 
     private function wrapText($text, $max)

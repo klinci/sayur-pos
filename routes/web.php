@@ -22,3 +22,5 @@ Route::put('/history/{id}', [InvoiceController::class, 'updateHistory'])->name('
 Route::get('/history/reprint/{id}', [InvoiceController::class, 'reprint'])->name('history.reprint');// Pastikan ada route ini
 Route::delete('/history/{id}', [InvoiceController::class, 'deleteTransaction'])->name('history.delete');
 
+Route::get('/history/pdf/{id}', [InvoiceController::class, 'generatePDF'])->name('history.pdf');
+
