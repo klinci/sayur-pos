@@ -14,7 +14,7 @@ class InvoiceController extends Controller
     // Halaman Utama Invoice
     public function index()
     {
-        $masterData = Product::all();
+        $masterData = Product::orderBy('name', 'asc')->get();
         return view('invoice', compact('masterData'));
     }
 
@@ -99,14 +99,16 @@ class InvoiceController extends Controller
         $now = \Carbon\Carbon::now()->timezone('Asia/Jakarta');
         $noInvoice = "BRG/" . $now->format('Ymd') . "/" . $now->format('His');
         $customerName = $request->input('customer_name', 'Pelanggan');        
+        $cashierName = $request->input('cashier_name', '-');
         $itemsInput = $request->input('items', []); 
         
         // 1. Simpan ke DB dan Ambil ID-nya keluar
-        $transactionId = DB::transaction(function () use ($noInvoice, $customerName, $itemsInput) {
+        $transactionId = DB::transaction(function () use ($noInvoice, $customerName, $cashierName, $itemsInput) {
             $totalSales = 0;
             $id = DB::table('transactions')->insertGetId([
                 'invoice_no' => $noInvoice,
                 'customer_name' => $customerName,
+                'cashier_name' => $cashierName,
                 'total_cost' => 0,
                 'total_sales' => 0,
                 'profit' => 0,
@@ -195,6 +197,7 @@ class InvoiceController extends Controller
         $printer->text("No  : " . $trx->invoice_no . $tanda . "\n");
         $printer->text("Tgl : " . $tanggalJam . "\n");
         $printer->text("Customer: " . strtoupper($trx->customer_name) . "\n");
+        $printer->text("Kasir   : " . strtoupper($trx->cashier_name) . "\n");
         $printer->text(str_repeat('=', 32) . "\n");
 
         foreach ($items as $item) {

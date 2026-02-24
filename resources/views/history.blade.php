@@ -52,6 +52,7 @@
                                 <th class="ps-3">Tanggal</th>
                                 <th>No. Invoice</th>
                                 <th>Customer</th>
+                                <th>Kasir</th>
                                 <th class="text-end">Total Jual</th>
                                 <th class="text-end">Profit</th>
                                 <th class="text-center">Aksi</th>
@@ -66,6 +67,7 @@
                                 </td>
                                 <td><span class="badge bg-secondary">{{ $t->invoice_no }}</span></td>
                                 <td>{{ $t->customer_name }}</td>
+                                <td>{{ $t->cashier_name }}</td>
                                 <td class="text-end fw-bold">Rp {{ number_format($t->total_sales, 0, ',', '.') }}</td>
                                 <td class="text-end">
                                     @if($t->total_cost == 0)

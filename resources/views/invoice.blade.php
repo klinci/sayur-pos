@@ -31,9 +31,15 @@
             <div class="card-body">
                 <form id="invoiceForm">
                     @csrf
-                    <div class="mb-3">
-                        <label class="form-label">Nama Customer</label>
-                        <input type="text" name="customer_name" class="form-control" placeholder="Masukkan nama..." required>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Nama Customer</label>
+                            <input type="text" name="customer_name" class="form-control" placeholder="Masukkan nama..." required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Kasir</label>
+                            <input type="text" name="cashier_name" class="form-control" placeholder="Nama kasir..." required>
+                        </div>
                     </div>
 
                     <hr>

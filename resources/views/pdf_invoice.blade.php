@@ -38,7 +38,9 @@
     </div>
 
     <p><strong>No Invoice:</strong> {{ $trx->invoice_no }}<br>
-    <strong>Customer:</strong> {{ strtoupper($trx->customer_name) }}</p>
+    <strong>Customer:</strong> {{ strtoupper($trx->customer_name) }}<br>
+    <strong>Kasir:</strong> {{ strtoupper($trx->cashier_name) }}</p>
+    
 
     <table class="table">
         <thead>
