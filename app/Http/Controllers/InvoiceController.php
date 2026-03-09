@@ -84,28 +84,28 @@ class InvoiceController extends Controller
 
     public function reportSummary(Request $request)
     {
-        // 1. Ambil daftar tanggal unik yang HANYA ada penjualannya saja
         $availableDates = DB::table('transactions')
             ->select(DB::raw('DATE(created_at) as date'))
             ->distinct()
             ->orderBy('date', 'desc')
             ->pluck('date');
 
-        // 2. Tentukan tanggal yang aktif (default: tanggal terbaru yang ada penjualan)
         $selectedDate = $request->input('date', $availableDates->first() ?? date('Y-m-d'));
 
-        // 3. Ambil Summary Penjualan untuk tanggal tersebut
         $summary = DB::table('transaction_items')
             ->join('transactions', 'transactions.id', '=', 'transaction_items.transaction_id')
             ->select(
                 'transaction_items.product_name',
+                'transaction_items.price_buy',
+                DB::raw('SUM(transaction_items.qty * transaction_items.price_buy) as total_buy'),
                 DB::raw('SUM(transaction_items.qty) as total_qty'),
-                DB::raw('SUM(transaction_items.qty * transaction_items.price_sell) as total_revenue')
+                DB::raw('SUM(transaction_items.qty * transaction_items.price_sell) as total_revenue'),
+                DB::raw('SUM(transaction_items.qty * (transaction_items.price_sell - transaction_items.price_buy)) as total_profit')
             )
             ->whereDate('transactions.created_at', $selectedDate)
-            ->groupBy('transaction_items.product_name')
+            ->groupBy('transaction_items.product_name', 'transaction_items.price_buy') // Tambahkan di group by
             ->having('total_qty', '>', 0)
-            ->orderBy('total_qty', 'desc')
+            ->orderBy('total_profit', 'desc')
             ->get();
 
         return view('report_summary', compact('summary', 'selectedDate', 'availableDates'));
