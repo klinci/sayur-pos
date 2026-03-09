@@ -16,8 +16,11 @@
                     <a href="{{ route('invoice.index') }}" class="btn btn-outline-success btn-sm me-2">
                         <i class="bi bi-plus-circle"></i> Buat Invoice
                     </a>
-                    <a href="{{ route('product.master') }}" class="btn btn-outline-primary btn-sm">
+                    <a href="{{ route('product.master') }}" class="btn btn-outline-primary btn-sm me-2">
                         <i class="bi bi-box"></i> Master Data
+                    </a>
+                    <a href="{{ route('report.summary') }}" class="btn btn-outline-warning btn-sm">
+                        <i class="bi bi-box"></i> Summary Harian
                     </a>
                 </div>
             </div>

@@ -23,4 +23,5 @@ Route::get('/history/reprint/{id}', [InvoiceController::class, 'reprint'])->name
 Route::delete('/history/{id}', [InvoiceController::class, 'deleteTransaction'])->name('history.delete');
 
 Route::get('/history/pdf/{id}', [InvoiceController::class, 'generatePDF'])->name('history.pdf');
+Route::get('/report/summary', [InvoiceController::class, 'reportSummary'])->name('report.summary');
 
