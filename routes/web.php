@@ -24,4 +24,5 @@ Route::delete('/history/{id}', [InvoiceController::class, 'deleteTransaction'])-
 
 Route::get('/history/pdf/{id}', [InvoiceController::class, 'generatePDF'])->name('history.pdf');
 Route::get('/report/summary', [InvoiceController::class, 'reportSummary'])->name('report.summary');
+Route::get('/report/charts', [InvoiceController::class, 'reportCharts'])->name('report.charts');
 

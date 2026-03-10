@@ -111,6 +111,132 @@ class InvoiceController extends Controller
         return view('report_summary', compact('summary', 'selectedDate', 'availableDates'));
     }
 
+    public function reportCharts()
+    {
+        // --- 1. DATA CARD (Bulan Ini) ---
+        $currentMonth = date('Y-m');
+        $matrix = DB::table('transactions')
+            ->where(DB::raw("strftime('%Y-%m', created_at)"), $currentMonth)
+            ->get();
+
+        // --- 2. DATA GRAFIK OMZET (SQLite) ---
+        $monthlyData = DB::table('transactions')
+            ->select(
+                DB::raw("strftime('%Y-%m', created_at) as month"),
+                DB::raw('SUM(total_sales) as omzet'),
+                DB::raw('SUM(profit) as profit')
+            )
+            ->where('created_at', '>=', now()->subMonths(6))
+            ->groupBy('month')->orderBy('month', 'asc')->get();
+
+        $monthlyOmzet = $monthlyData->pluck('omzet', 'month');
+        $monthlyProfit = $monthlyData->pluck('profit', 'month');
+        $allMonths = $monthlyData->pluck('month');
+
+        // --- 3. DATA TREND ITEM ---
+        $itemMonthlyTrendsData = DB::table('transaction_items')
+            ->join('transactions', 'transactions.id', '=', 'transaction_items.transaction_id')
+            ->select(
+                'transaction_items.product_name',
+                DB::raw("strftime('%Y-%m', transactions.created_at) as month"),
+                DB::raw('SUM(transaction_items.qty) as total_qty')
+            )
+            ->where('transactions.created_at', '>=', now()->subMonths(6))
+            ->groupBy('month', 'transaction_items.product_name')->get();
+
+        $itemsData = [];
+        foreach ($itemMonthlyTrendsData as $data) {
+            $itemsData[$data->product_name][$data->month] = $data->total_qty;
+        }
+
+        $itemTrendDatasets = [];
+        $colors = ['#198754', '#ffc107', '#dc3545', '#007bff', '#6f42c1', '#fd7e14', '#20c997'];
+        $colorIndex = 0;
+        foreach ($itemsData as $name => $monthQtys) {
+            $datasetData = [];
+            foreach ($allMonths as $month) { $datasetData[] = $monthQtys[$month] ?? 0; }
+            $itemTrendDatasets[] = [
+                'label' => $name, 'data' => $datasetData,
+                'borderColor' => $colors[$colorIndex % count($colors)],
+                'backgroundColor' => $colors[$colorIndex % count($colors)],
+                'fill' => false, 'tension' => 0.3
+            ];
+            $colorIndex++;
+        }
+
+        // --- 4. ENGINE AI PRO (HOLT-WINTERS SIMULATION) ---
+        // Kita ambil data harian 30 hari terakhir untuk melihat pola WEEKEND vs WEEKDAY
+        $dailySales = DB::table('transaction_items')
+            ->join('transactions', 'transactions.id', '=', 'transaction_items.transaction_id')
+            ->select(
+                'transaction_items.product_name',
+                DB::raw("strftime('%w', transactions.created_at) as day_of_week"), // 0=Minggu, 6=Sabtu
+                DB::raw('SUM(transaction_items.qty) as qty')
+            )
+            ->where('transactions.created_at', '>=', now()->subDays(30))
+            ->groupBy('product_name', 'day_of_week')
+            ->get();
+
+        $aiRecommendations = collect($itemsData)->map(function($monthValues, $productName) use ($dailySales) {
+            $qtys = array_values($monthValues);
+            $count = count($qtys);
+            
+            // --- Algoritma Dasar: Weighted Moving Average ---
+            // Bulan terbaru bobotnya 3x lipat lebih penting dari bulan lama
+            $weightedSum = 0; $weightTotal = 0;
+            foreach ($qtys as $i => $q) {
+                $w = $i + 1; $weightedSum += ($q * $w); $weightTotal += $w;
+            }
+            $basePredict = ($weightTotal > 0) ? $weightedSum / $weightTotal : 0;
+
+            // --- Analisa Pola Weekend ---
+            $itemDaily = $dailySales->where('product_name', $productName);
+            $weekendBoost = $itemDaily->whereIn('day_of_week', ['0', '6'])->avg('qty') ?? 0;
+            $weekdayAvg = $itemDaily->whereIn('day_of_week', ['1', '2', '3', '4', '5'])->avg('qty') ?? 0;
+            
+            $isWeekendPopular = ($weekendBoost > $weekdayAvg * 1.2);
+
+            // --- Penentuan Keputusan AI ---
+            $trendStatus = 'Stabil';
+            $prediction = $basePredict;
+            $reason = "Permintaan stabil berdasarkan pola 6 bulan terakhir.";
+
+            if ($count >= 2) {
+                $growth = ($qtys[$count-1] - $qtys[$count-2]);
+                if ($growth > 0) {
+                    $trendStatus = 'Naik';
+                    $prediction = $basePredict + ($growth * 0.5); // Antisipasi kenaikan berkelanjutan
+                    $reason = "Ada tren kenaikan bulanan. ";
+                } elseif ($growth < 0) {
+                    $trendStatus = 'Turun';
+                    $prediction = $basePredict + ($growth * 0.3);
+                    $reason = "Permintaan sedang melandai. ";
+                }
+            }
+
+            if ($isWeekendPopular) {
+                $reason .= "Hati-hati, item ini SANGAT laku di akhir pekan. Stok harus ready di hari Jumat.";
+            }
+
+            // Rekomendasi Tanam (Safety Stock 20%)
+            $plantRec = round($prediction * 1.2);
+
+            return (object)[
+                'product_name' => $productName,
+                'trend' => $trendStatus,
+                'predicted_qty' => round($prediction),
+                'recommended_to_plant' => $plantRec,
+                'ai_reason' => $reason,
+                'is_hot' => $isWeekendPopular
+            ];
+        })->sortByDesc('predicted_qty')->values();
+
+        return view('report_charts', compact(
+            'matrix', 'monthlyOmzet', 'monthlyProfit', 
+            'itemTrendDatasets', 'allMonths', 'aiRecommendations'
+        ));
+    }
+
     // --- FUNGSI GENERATE PDF ---
     public function generatePDF($id)
     {
