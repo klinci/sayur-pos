@@ -271,13 +271,24 @@ class InvoiceController extends Controller
             ]);
 
             foreach ($itemsInput as $item) {
+                // 1. Cari harga beli terakhir dari transaksi sebelumnya untuk produk yang sama
+                $lastPriceBuy = DB::table('transaction_items')
+                    ->where('product_name', $item['name'])
+                    ->where('price_buy', '>', 0) // Pastikan bukan data kosong
+                    ->latest('id')               // Ambil yang paling baru
+                    ->value('price_buy');        // Ambil kolom price_buy saja
+
+                // 2. Jika tidak ditemukan (produk baru), set ke 0 atau harga jual sementara
+                $priceBuy = $lastPriceBuy ?? 0;
+
                 $totalSales += ($item['qty'] * $item['price']);
+                
                 DB::table('transaction_items')->insert([
                     'transaction_id' => $id,
                     'product_name' => $item['name'],
                     'qty' => $item['qty'],
                     'price_sell' => $item['price'],
-                    'price_buy' => 0,
+                    'price_buy' => $priceBuy, // Sekarang otomatis terisi
                 ]);
             }
 
