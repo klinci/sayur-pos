@@ -150,18 +150,28 @@ class InvoiceController extends Controller
         }
 
         $itemTrendDatasets = [];
-        $colors = ['#198754', '#ffc107', '#dc3545', '#007bff', '#6f42c1', '#fd7e14', '#20c997'];
-        $colorIndex = 0;
+        $index = 0;
+
         foreach ($itemsData as $name => $monthQtys) {
             $datasetData = [];
-            foreach ($allMonths as $month) { $datasetData[] = $monthQtys[$month] ?? 0; }
+            foreach ($allMonths as $month) { 
+                $datasetData[] = $monthQtys[$month] ?? 0; 
+            }
+
+            // GENERATE WARNA UNIK BERDASARKAN NAMA PRODUK
+            // Kita pakai hash nama produk agar warnanya selalu sama untuk produk tersebut
+            $hash = md5($name);
+            $color = '#' . substr($hash, 0, 6); // Ambil 6 karakter pertama hash jadi kode HEX
+            
             $itemTrendDatasets[] = [
-                'label' => $name, 'data' => $datasetData,
-                'borderColor' => $colors[$colorIndex % count($colors)],
-                'backgroundColor' => $colors[$colorIndex % count($colors)],
-                'fill' => false, 'tension' => 0.3
+                'label' => $name, 
+                'data' => $datasetData,
+                'borderColor' => $color,
+                'backgroundColor' => $color,
+                'fill' => false, 
+                'tension' => 0.3
             ];
-            $colorIndex++;
+            $index++;
         }
 
         // --- 4. ENGINE AI PRO (HOLT-WINTERS SIMULATION) ---

@@ -180,24 +180,26 @@
         });
 
         // Grafik 2: Pie Prediksi (MODIFIKASI: Diperbesar dan lebih interaktif)
+        // Grafik 2: Pie Prediksi (Warna Dinamis Unik)
         new Chart(document.getElementById('itemPieChart'), {
             type: 'doughnut',
             data: {
                 labels: {!! json_encode($aiRecommendations->pluck('product_name')) !!},
                 datasets: [{
                     data: {!! json_encode($aiRecommendations->pluck('predicted_qty')) !!},
-                    backgroundColor: ['#198754', '#20c997', '#ffc107', '#0dcaf0', '#6610f2', '#fd7e14', '#adb5bd'],
-                    hoverOffset: 30 // Efek potongan "loncat" saat di-hover agar jelas
+                    // AMBIL WARNA DARI DATASET TREND (AGAR WARNA ITEM KONSISTEN DI SEMUA GRAFIK)
+                    backgroundColor: {!! json_encode($itemTrendDatasets) !!}.map(d => d.backgroundColor),
+                    hoverOffset: 30 
                 }]
             },
             options: {
                 ...chartOptions,
-                cutout: '50%', // Lubang diperkecil agar badan grafik lebih tebal/besar
+                cutout: '50%',
                 plugins: {
                     ...chartOptions.plugins,
                     tooltip: {
                         padding: 15,
-                        bodyFont: { size: 14 }, // Tulisan di kotak hover lebih besar
+                        bodyFont: { size: 14 },
                         titleFont: { size: 15 }
                     }
                 }
