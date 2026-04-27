@@ -32,6 +32,23 @@ class InvoiceController extends Controller
         return back()->with('success', 'Produk berhasil ditambah');
     }
 
+    // Update Produk
+    public function updateProduct(Request $request, $id)
+    {
+        $request->validate([
+            'name' => 'required',
+            'price' => 'required|numeric'
+        ]);
+
+        $product = Product::find($id);
+        $product->update([
+            'name' => $request->name,
+            'price' => $request->price
+        ]);
+
+        return back()->with('success', 'Produk berhasil diperbarui');
+    }
+
     // Hapus Produk
     public function deleteProduct($id)
     {

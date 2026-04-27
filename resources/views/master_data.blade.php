@@ -6,6 +6,16 @@
     <title>Master Data Produk - BaReng7 Vegie</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+    <style>
+        .btn-action {
+            width: 32px;
+            height: 32px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0;
+        }
+    </style>
 </head>
 <body class="bg-light">
     <div class="container py-5">
@@ -37,14 +47,14 @@
                             <div class="mb-3">
                                 <label class="form-label small text-muted">Harga Jual Default (Satuan)</label>
                                 <div class="input-group">
-                                    <span class="input-group-text">Rp</span>
+                                    <span class="input-group-text border-end-0 bg-light">Rp</span>
                                     <input type="number" name="price" class="form-control" placeholder="0" required>
                                 </div>
                                 <div class="form-text text-muted" style="font-size: 0.75rem;">
                                     *Harga ini akan muncul otomatis saat pilih produk di invoice.
                                 </div>
                             </div>
-                            <button type="submit" class="btn btn-success w-100 py-2">
+                            <button type="submit" class="btn btn-success w-100 py-2 fw-bold">
                                 <i class="bi bi-save"></i> Simpan ke Master
                             </button>
                         </form>
@@ -53,18 +63,18 @@
             </div>
 
             <div class="col-md-8">
-                <div class="card shadow-sm border-0 text-center">
+                <div class="card shadow-sm border-0">
                     <div class="card-header bg-dark text-white p-3">
                         <h6 class="mb-0 text-start"><i class="bi bi-list-ul"></i> Daftar Produk Tersedia</h6>
                     </div>
-                    <div class="card-body p-0">
+                    <div class="card-body p-0 text-center">
                         <div class="table-responsive">
                             <table class="table table-hover align-middle mb-0">
                                 <thead class="table-light">
                                     <tr>
                                         <th class="text-start ps-4">Nama Produk</th>
                                         <th class="text-end">Harga Jual</th>
-                                        <th class="text-center" style="width: 100px;">Aksi</th>
+                                        <th class="text-center" style="width: 120px;">Aksi</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -75,13 +85,54 @@
                                             Rp {{ number_format($p->price, 0, ',', '.') }}
                                         </td>
                                         <td class="text-center">
-                                            <form action="{{ route('product.delete', $p->id) }}" method="POST" onsubmit="return confirm('Hapus produk ini dari master?')">
-                                                @csrf
-                                                @method('DELETE')
-                                                <button type="submit" class="btn btn-sm btn-outline-danger border-0">
-                                                    <i class="bi bi-trash-fill"></i>
+                                            <div class="d-flex justify-content-center align-items-center gap-1">
+                                                <button type="button" class="btn btn-action btn-outline-primary border-0" 
+                                                        data-bs-toggle="modal" 
+                                                        data-bs-target="#editModal{{ $p->id }}"
+                                                        title="Edit Produk">
+                                                    <i class="bi bi-pencil-square"></i>
                                                 </button>
-                                            </form>
+
+                                                <form action="{{ route('product.delete', $p->id) }}" method="POST" onsubmit="return confirm('Hapus produk ini dari master?')" class="m-0">
+                                                    @csrf
+                                                    @method('DELETE')
+                                                    <button type="submit" class="btn btn-action btn-outline-danger border-0" title="Hapus Produk">
+                                                        <i class="bi bi-trash-fill"></i>
+                                                    </button>
+                                                </form>
+                                            </div>
+
+                                            <div class="modal fade" id="editModal{{ $p->id }}" tabindex="-1" aria-hidden="true">
+                                                <div class="modal-dialog modal-dialog-centered text-start">
+                                                    <div class="modal-content">
+                                                        <div class="modal-header bg-primary text-white">
+                                                            <h5 class="modal-title"><i class="bi bi-pencil-square"></i> Edit Produk</h5>
+                                                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                                                        </div>
+                                                        <form action="{{ route('product.update', $p->id) }}" method="POST">
+                                                            @csrf
+                                                            @method('PUT')
+                                                            <div class="modal-body">
+                                                                <div class="mb-3">
+                                                                    <label class="form-label small text-muted fw-bold">Nama Produk</label>
+                                                                    <input type="text" name="name" class="form-control" value="{{ $p->name }}" required>
+                                                                </div>
+                                                                <div class="mb-3">
+                                                                    <label class="form-label small text-muted fw-bold">Harga Jual</label>
+                                                                    <div class="input-group">
+                                                                        <span class="input-group-text bg-light">Rp</span>
+                                                                        <input type="number" name="price" class="form-control" value="{{ $p->price }}" required>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                            <div class="modal-footer bg-light">
+                                                                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Batal</button>
+                                                                <button type="submit" class="btn btn-primary btn-sm px-4">Simpan Perubahan</button>
+                                                            </div>
+                                                        </form>
+                                                    </div>
+                                                </div>
+                                            </div>
                                         </td>
                                     </tr>
                                     @empty
@@ -100,5 +151,7 @@
             </div>
         </div>
     </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

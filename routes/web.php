@@ -15,6 +15,7 @@ Route::get('/upload-nv-logo', [InvoiceController::class, 'uploadNvLogo']);
 Route::get('/master-data', [InvoiceController::class, 'masterData'])->name('product.master');
 Route::post('/master-data', [InvoiceController::class, 'storeProduct'])->name('product.store');
 Route::delete('/master-data/{id}', [InvoiceController::class, 'deleteProduct'])->name('product.delete');
+Route::put('/master-data/{id}', [InvoiceController::class, 'updateProduct'])->name('product.update');
 
 Route::get('/history', [InvoiceController::class, 'history'])->name('history');
 Route::get('/history/{id}/edit', [InvoiceController::class, 'editHistory'])->name('history.edit');
