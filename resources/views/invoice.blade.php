@@ -64,7 +64,7 @@
                                 <input type="hidden" name="total_hidden" id="total_hidden">
                             </div>
                             <div class="col-md-2">
-                                <input type="number" name="items[0][qty]" class="form-control input-qty" placeholder="Qty" min="1" value="1" required>
+                                <input type="number" name="items[0][qty]" class="form-control input-qty" placeholder="Kg / Qty" step="any" min="0.01" value="1" required>
                             </div>
                             <div class="col-md-3">
                                 <input type="number" name="items[0][price]" class="form-control input-price" placeholder="Harga" required>
@@ -146,7 +146,7 @@
             rows.forEach(row => {
                 const qty = row.querySelector('.input-qty').value || 0;
                 const price = row.querySelector('.input-price').value || 0;
-                total += (parseInt(qty) * parseInt(price));
+                total += (parseFloat(qty) * parseInt(price));
             });
 
             document.getElementById('grandTotalDisplay').innerText = formatRupiah(total);
@@ -176,7 +176,7 @@
                                 </select>
                             </div>
                             <div class="col-md-2">
-                                <input type="number" name="items[${itemCount}][qty]" class="form-control input-qty" min="1" value="1" required>
+                                <input type="number" name="items[${itemCount}][qty]" class="form-control input-qty" placeholder="Kg / Qty" step="any" min="0.01" value="1" required>
                             </div>
                             <div class="col-md-3">
                                 <input type="number" name="items[${itemCount}][price]" class="form-control input-price" required>
@@ -278,7 +278,7 @@
                     // calculateTotal();
                 }
             } catch (error) {
-                aalert('Gagal memproses transaksi: ' + error);
+                alert('Gagal memproses transaksi: ' + error);
             } finally {
                 btn.disabled = false;
                 btn.innerText = 'CETAK INVOICE';

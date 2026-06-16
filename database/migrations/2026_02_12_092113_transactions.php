@@ -27,7 +27,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('transaction_id')->constrained()->onDelete('cascade');
             $table->string('product_name');
-            $table->integer('qty');
+            $table->float('qty');
             $table->integer('price_sell');
             $table->integer('price_buy')->default(0); // MANUAL INPUT DI RIWAYAT
             $table->timestamps();

@@ -72,7 +72,7 @@ class InvoiceController extends Controller
             $priceBuy = $val['price_buy'] ?? 0;
             DB::table('transaction_items')->where('id', $itemId)->update(['price_buy' => $priceBuy]);
             $item = DB::table('transaction_items')->where('id', $itemId)->first();
-            $totalCost += ($item->qty * $priceBuy);
+            $totalCost += ((float)$item->qty * $priceBuy);
         }
         $trx = DB::table('transactions')->where('id', $id)->first();
         DB::table('transactions')->where('id', $id)->update([
@@ -308,7 +308,7 @@ class InvoiceController extends Controller
                 // 2. Jika tidak ditemukan (produk baru), set ke 0 atau harga jual sementara
                 $priceBuy = $lastPriceBuy ?? 0;
 
-                $totalSales += ($item['qty'] * $item['price']);
+                $totalSales += ((float)$item['qty'] * $item['price']);
                 
                 DB::table('transaction_items')->insert([
                     'transaction_id' => $id,
@@ -395,9 +395,15 @@ class InvoiceController extends Controller
 
         foreach ($items as $item) {
             $printer->text($this->wrapText($item->product_name, 32) . "\n");
-            $subtotal = number_format($item->qty * $item->price_sell, 0, ',', '.');
+            $subtotal = number_format((float)$item->qty * $item->price_sell, 0, ',', '.');
             $hargaSatuan = number_format($item->price_sell, 0, ',', '.');
-            $printer->text(sprintf(" %2dx %-8s %11s\n", $item->qty, $hargaSatuan, $subtotal));
+
+            if (floor($item->qty) != $item->qty) {
+                $formattedQty = (float)$item->qty . "kg"; 
+            } else {
+                $formattedQty = number_format($item->qty, 0) . "x";
+            }
+            $printer->text(sprintf(" %-7s %-8s %11s\n", $formattedQty, $hargaSatuan, $subtotal));
             $printer->feed(1);
         }
 
