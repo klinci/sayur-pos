@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\InvoiceController;
+use Illuminate\Http\Request;
 
 $basicAuthMiddleware = function (Request $request, $next) {
     $user = $request->getUser();
