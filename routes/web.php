@@ -4,7 +4,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\InvoiceController;
 
 Route::get('/', function () {
-    return view('welcome');
+    return redirect('/invoice');
 });
 
 Route::get('/invoice', [InvoiceController::class, 'index'])->name('invoice.index');
