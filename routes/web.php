@@ -3,20 +3,21 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\InvoiceController;
 
-Route::middleware([function (Request $request, $next) {
+$basicAuthMiddleware = function (Request $request, $next) {
     $user = $request->getUser();
     $password = $request->getPassword();
 
-    // Validasi dengan data di file .env (Default user: admin, password: rahasia123)
     if ($user === env('BASIC_AUTH_USER', 'admin') && $password === env('BASIC_AUTH_PASSWORD', 'rahasia123')) {
         return $next($request);
     }
 
-    // Jika salah/belum login, paksa browser munculkan pop-up phpMyAdmin style
     return response('Akses Ditolak.', 401, [
         'WWW-Authenticate' => 'Basic realm="Halaman Terproteksi"'
     ]);
-}])->group(function () {
+};
+
+
+Route::group(['middleware' => [$basicAuthMiddleware]], function () {
 
         Route::get('/', function () {
             return redirect('/invoice');
